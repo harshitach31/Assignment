@@ -25,8 +25,6 @@ import (
     "github.com/cilium/ebpf/link"
 )
 
-// Auto-generated structs are nicer with bpf2go, but for demo we keep it simple.
-
 func main() {
     iface := flag.String("iface", "eth0", "Interface to attach XDP program")
     port := flag.Uint("port", 4040, "TCP port to drop")
@@ -77,7 +75,7 @@ func main() {
     fmt.Println("Detaching...")
 }
 
-// helper: resolve interface index from name
+
 func ifIndex(name string) int {
     iface, err := netInterfaceByName(name)
     if err != nil {
