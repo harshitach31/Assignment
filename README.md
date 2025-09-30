@@ -96,4 +96,28 @@ func netInterfaceByName(name string) (*net.Interface, error) {
 4.sudo ./dropper -iface eth0 -port 4040
 
 
+Question 2 whole steps
+1. Compile
+```
+clang -O2 -g -target bpf -c sock_filter.c -o sock_filter.o
+
+```
+
+2. We must attach this to a cgroup v2 hierarchy controlling the process. Example
+
+```
+# Enable cgroup v2 (if not already)
+mount -t cgroup2 none /sys/fs/cgroup
+
+# Create a new cgroup
+mkdir /sys/fs/cgroup/ebpf_test
+
+# Move your process (PID=1234) into it
+echo 1234 > /sys/fs/cgroup/ebpf_test/cgroup.procs
+
+# Attach eBPF program
+bpftool prog load sock_filter.o /sys/fs/bpf/sock_filter
+bpftool cgroup attach /sys/fs/cgroup/ebpf_test connect4 pinned /sys/fs/bpf/sock_filter
+
+```
 
