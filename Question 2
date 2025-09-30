@@ -1,0 +1,31 @@
+//name the file as sock_filter.c
+// SPDX-License-Identifier: GPL-2.0
+#include <linux/bpf.h>
+#include <linux/in.h>
+#include <bpf/bpf_helpers.h>
+
+SEC("cgroup/connect4")
+int allow_only_4040(struct bpf_sock_addr *ctx)
+{
+    char comm[16];
+    bpf_get_current_comm(&comm, sizeof(comm));
+
+    // Match process name
+    if (__builtin_memcmp(comm, "myprocess", 9) == 0) {
+        // Destination port is in network byte order
+        __u16 dport = bpf_ntohs(ctx->user_port);
+
+        if (dport == 4040) {
+            // Allow connect()
+            return 1;
+        } else {
+            // Deny other ports
+            return 0;
+        }
+    }
+
+    // Other processes not affected
+    return 1;
+}
+
+char _license[] SEC("license") = "GPL";
