@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: GPL-2.0
+#include <linux/bpf.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <bpf/bpf_helpers.h>
+
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, __u32);
+    __type(value, __u16);
+} port_map SEC(".maps");
+
+SEC("xdp")
+int xdp_drop_port_prog(struct xdp_md *ctx) {
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data = (void *)(long)ctx->data;
+
+    struct ethhdr *eth = data;
+    if ((void*)(eth + 1) > data_end) return XDP_PASS;
+
+    if (eth->h_proto != __constant_htons(ETH_P_IP))
+        return XDP_PASS;
+
+    struct iphdr *iph = (void*)(eth + 1);
+    if ((void*)(iph + 1) > data_end) return XDP_PASS;
+
+    if (iph->protocol != IPPROTO_TCP)
+        return XDP_PASS;
+
+    struct tcphdr *tcph = (void*)iph + iph->ihl * 4;
+    if ((void*)(tcph + 1) > data_end) return XDP_PASS;
+
+    __u32 key = 0;
+    __u16 *target_port = bpf_map_lookup_elem(&port_map, &key);
+    __u16 port = 4040; // default
+    if (target_port)
+        port = *target_port;
+
+    if (tcph->dest == __constant_htons(port)) {
+        return XDP_DROP;
+    }
+
+    return XDP_PASS;
+}
+
+char _license[] SEC("license") = "GPL";
